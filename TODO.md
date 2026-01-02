@@ -3,7 +3,7 @@
 ## Functionality
 
 - [x] Command exit status.
-- [ ] Cache last command.
+- [x] Cache last command.
 - [ ] Keybind to run cached command.
 
 ## QOL

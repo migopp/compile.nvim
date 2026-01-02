@@ -56,21 +56,19 @@ end
 ---Runs the given compile command, or the one cached in `M`.
 ---@param cmd string?
 function M.compile(cmd)
-    -- Prioritize given command to the cached command.
-    local run_cmd = cmd or M.cached_cmd
-    assert(run_cmd ~= nil, "`M.compile` must be run with either a non-nil cmd or cached cmd.")
+    assert(cmd ~= nil, "`M.compile` must be run with a non-nil cmd.")
 
     -- Open the UI.
     local cmd_ui = M.open_compile_window()
 
     -- Report the command written.
-    cmd_ui:writeln("> " .. run_cmd)
+    cmd_ui:writeln("> " .. cmd)
     cmd_ui:writeln("") -- Empty line.
 
     -- Run the command, and report the output.
     --
     -- See `:help systemlist`.
-    local cmd_out = vim.fn.systemlist(run_cmd .. " 2>&1")
+    local cmd_out = vim.fn.systemlist(cmd .. " 2>&1")
     for _, out_line in ipairs(cmd_out) do
         cmd_ui:writeln(out_line)
     end
@@ -111,8 +109,14 @@ function M.setup(opts)
 
     -- User command to run the compiler.
     vim.api.nvim_create_user_command("Compile", function(cmp_opts)
-        M.compile(cmp_opts.args)
-    end, { nargs = 1 })
+        local cmd = cmp_opts.args
+        if cmd == "" then
+            M.compile(M.cached_cmd)
+        else
+            M.compile(cmd)
+            M.cached_cmd = cmd
+        end
+    end, { nargs = "?" })
 end
 
 return M
