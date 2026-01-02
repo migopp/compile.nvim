@@ -2,7 +2,7 @@
 
 ## Functionality
 
-- [ ] Command exit status.
+- [x] Command exit status.
 - [ ] Cache last command.
 - [ ] Keybind to run cached command.
 
