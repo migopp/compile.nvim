@@ -4,7 +4,9 @@
 
 - [x] Command exit status.
 - [x] Cache last command.
-- [ ] Keybind to run cached command.
+- [x] Keybind to run cached command.
+- [ ] Command input window on keybind `<leader>cc`.
+- [ ] User-specified opts/keybinds.
 
 ## QOL
 

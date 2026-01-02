@@ -107,6 +107,16 @@ function M.setup(opts)
         bold = true,
     })
 
+    -- Set keybinds.
+    vim.keymap.set("n", "<leader>cr", function()
+        if M.cached_cmd then
+            M.compile(M.cached_cmd)
+        end
+        -- TODO: If there is no cached command, ask user to enter one.
+        --
+        -- Dependent on implementing the input window UI, probably.
+    end, {})
+
     -- User command to run the compiler.
     vim.api.nvim_create_user_command("Compile", function(cmp_opts)
         local cmd = cmp_opts.args
