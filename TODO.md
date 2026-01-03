@@ -6,7 +6,7 @@
 - [x] Cache last command.
 - [x] Keybind to run cached command, `<leader>cr`.
 - [x] Command input window on keybind, `<leader>cc`.
-- [ ] User-specified opts/keybinds.
+- [x] User-specified opts/keybinds.
 
 ## QOL
 

@@ -1,7 +1,7 @@
--- Module table.
+---Module table.
 local M = {}
 
--- UI table.
+---UI table.
 local UI = {}
 UI.__index = UI
 
@@ -20,7 +20,7 @@ function UI:new()
     -- Open the compilation window.
     local main_win = vim.api.nvim_get_current_win()
     ui.win_handle = vim.api.nvim_open_win(ui.buf_handle, true, {
-        split = "below",
+        split = 'below',
         win = main_win,
     })
 
@@ -59,8 +59,8 @@ function UI:writeln(text, opts)
 
             -- Find the substr (start + end col.) of the phrase.
             local first, last = string.find(text, phrase)
-            assert(first, "Highlight substring must exist in text.")
-            assert(last, "Highlight substring must exist in text.")
+            assert(first, 'Highlight substring must exist in text.')
+            assert(last, 'Highlight substring must exist in text.')
             vim.api.nvim_buf_set_extmark(self.buf_handle, M.plugin_ns, this_line, first - 1, {
                 end_col = last,
                 hl_group = group,
@@ -81,20 +81,20 @@ end
 ---M.compile(nil)
 ---```
 ---@param cmd string?
-function M.compile(cmd)
-    assert(cmd ~= nil, "`M.compile` must be run with a non-nil cmd.")
+local function compile(cmd)
+    assert(cmd ~= nil, '`M.compile` must be run with a non-nil cmd.')
 
     -- Open the UI.
     local cmd_ui = UI:new()
 
     -- Report the command written.
-    cmd_ui:writeln("> " .. cmd)
-    cmd_ui:writeln("") -- Empty line.
+    cmd_ui:writeln('> ' .. cmd)
+    cmd_ui:writeln '' -- Empty line.
 
     -- Run the command, and report the output.
     --
     -- See `:help systemlist`.
-    local cmd_out = vim.fn.systemlist(cmd .. " 2>&1")
+    local cmd_out = vim.fn.systemlist(cmd .. ' 2>&1')
     for _, out_line in ipairs(cmd_out) do
         cmd_ui:writeln(out_line)
     end
@@ -104,25 +104,25 @@ function M.compile(cmd)
     -- Very handy.
     -- See `:help shell_error`
     local code = vim.v.shell_error
-    cmd_ui:writeln("") -- Empty line.
+    cmd_ui:writeln '' -- Empty line.
     if code == 0 then
         -- OK status.
-        cmd_ui:writeln("Command exited with status ok.", { hl_words = { { "ok", "CompileOk" } } })
+        cmd_ui:writeln('Command exited with status ok.', { hl_words = { { 'ok', 'CompileOk' } } })
         -- Highlight OK.
     else
         cmd_ui:writeln(
-            "Command exited abnormally with code " .. code,
-            { hl_words = { { "abnormally", "CompileErr" } } }
+            'Command exited abnormally with code ' .. code,
+            { hl_words = { { 'abnormally', 'CompileErr' } } }
         )
     end
 
     -- Set as read-only.
-    vim.api.nvim_set_option_value("readonly", true, { buf = cmd_ui.buf_handle })
+    vim.api.nvim_set_option_value('readonly', true, { buf = cmd_ui.buf_handle })
 end
 
 ---Collects a new compile command via a user-editable scratch buffer.
 ---Then, caches (in `M.cached_cmd`) and runs the command with `M.compile`.
-function M.get_cmd_and_compile()
+local function get_cmd_and_compile()
     -- Open scratch buffer.
     local cmd_ui = UI:new()
 
@@ -130,8 +130,8 @@ function M.get_cmd_and_compile()
     -- Gathers the buffer contents, caches it, and runs `compile`.
     local on_close = function(args)
         local cmd_lines = vim.api.nvim_buf_get_lines(cmd_ui.buf_handle, 0, -1, true)
-        local cmd = table.concat(cmd_lines, " ")
-        assert(cmd ~= "", "Must enter a command in scratch buffer in `M.get_cmd_and_compile()`.")
+        local cmd = table.concat(cmd_lines, ' ')
+        assert(cmd ~= '', 'Must enter a command in scratch buffer in `M.get_cmd_and_compile()`.')
         M.compile(cmd)
         M.cached_cmd = cmd
     end
@@ -140,52 +140,115 @@ function M.get_cmd_and_compile()
     --
     -- Want to make sure it only impacts this window, so set up an augroup.
     -- See `:help augroup`
-    local win_group = vim.api.nvim_create_augroup("compile_win_" .. cmd_ui.win_handle, {})
-    vim.api.nvim_create_autocmd("WinClosed", {
+    local win_group = vim.api.nvim_create_augroup('compile_win_' .. cmd_ui.win_handle, {})
+    vim.api.nvim_create_autocmd('WinClosed', {
         once = true,
         group = win_group,
         callback = on_close,
     })
 end
 
-function M.setup(opts)
+---Create key command.
+---
+---Suggested mapping is `<leader>cc`.
+function M.command_create()
+    get_cmd_and_compile()
+end
+
+---Rerun the cached command, if available.
+---
+---Suggested mapping is `<leader>cr`.
+function M.command_rerun()
+    if M.cached_cmd then
+        compile(M.cached_cmd)
+    else
+        get_cmd_and_compile()
+    end
+end
+
+---Cache and run the given command.
+---
+---Suggested to be available via `:Command`.
+function M.command_run(cmd)
+    compile(cmd)
+    M.cached_cmd = cmd
+end
+
+---Default module options.
+local def_opts = {
+    ---Highlights. These are stupid. Not sure why it is a configuration option.
+    ---Options are entered directly into `nvim_set_hl`.
+    ---See `:help vim.api.nvim_set_hl` for argument semantics.
+    highlights = {
+        ['CompileOk'] = {
+            fg = '#00ff00',
+            bold = true,
+        },
+        ['CompileErr'] = {
+            fg = '#ff0000',
+            bold = true,
+        },
+    },
+    ---Keymaps. Each entry is entered directly into a call to `vim.keymap.set`.
+    ---See `:help vim.keymap.set` for argument semantics.
+    ---
+    ---Currently, mapping name is useless, functionally.
+    keymaps = {
+        ['command_create'] = {
+            mode = 'n',
+            lhs = '<leader>cc',
+            rhs = M.command_create,
+            opts = { desc = '[C]ommand [C]reate' },
+        },
+        ['command_rerun'] = {
+            mode = 'n',
+            lhs = '<leader>cr',
+            rhs = M.command_rerun,
+            opts = { desc = '[C]ommand [R]erun' },
+        },
+    },
+    ---User commands. Each is entered directly into a call to `vim.api.nvim_create_user_command`.
+    ---See `:help vim.api.nvim_create_user_command` for argument semantics.
+    ---
+    ---Currently, mapping name is useless, functionally.
+    commands = {
+        ['command_run'] = {
+            name = 'Compile',
+            command = function(opts)
+                M.command_run(opts.args)
+            end,
+            opts = { nargs = 1 },
+        },
+    },
+}
+
+---Plugin setup. Required.
+---
+---This is made to be as configurable as possible.
+---Beware.
+function M.setup(user_opts)
+    -- Merge user opts.
+    local opts = vim.tbl_deep_extend('force', def_opts, user_opts)
+
     -- Setup plugin namespace for exts.
-    M.plugin_ns = vim.api.nvim_create_namespace("compile")
+    M.plugin_ns = vim.api.nvim_create_namespace 'compile'
 
     -- Highlight groups for UI.
     --
     -- Use global highlight namespace.
-    vim.api.nvim_set_hl(0, "CompileOk", {
-        fg = "#00ff00",
-        bold = true,
-    })
-    vim.api.nvim_set_hl(0, "CompileErr", {
-        fg = "#ff0000",
-        bold = true,
-    })
+    for hl_name, hl_opts in pairs(opts.highlights) do
+        vim.api.nvim_set_hl(0, hl_name, hl_opts)
+    end
 
-    -- Set keybinds.
-    --
-    -- `<leader>cr` for "command-rerun", by default.
-    vim.keymap.set("n", "<leader>cr", function()
-        -- Prefer cached command, obviously.
-        if M.cached_cmd then
-            M.compile(M.cached_cmd)
-        else
-            M.get_cmd_and_compile()
-        end
-    end, { desc = "[C]ommand [R]erun" })
-    -- `<leader>cc` for "command-create", by default.
-    vim.keymap.set("n", "<leader>cc", function()
-        M.get_cmd_and_compile()
-    end, { desc = "[C]ommand [C]reate" })
+    -- Keymaps.
+    for _, km_args in pairs(opts.keymaps) do
+        vim.keymap.set(km_args.mode, km_args.lhs, km_args.rhs, km_args.opts)
+    end
 
-    -- User command to run the compiler.
-    vim.api.nvim_create_user_command("Compile", function(cmp_opts)
-        local cmd = cmp_opts.args
-        M.compile(cmd)
-        M.cached_cmd = cmd
-    end, { nargs = 1 })
+    -- User commands.
+    for _, uc_args in pairs(opts.commands) do
+        vim.api.nvim_create_user_command(uc_args.name, uc_args.command, uc_args.opts)
+    end
 end
 
 return M
