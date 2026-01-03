@@ -16,4 +16,5 @@
 
 ## Chores
 
-- [ ] Write README.md.
+- [x] Write README.md.
+- [x] LICENSE
