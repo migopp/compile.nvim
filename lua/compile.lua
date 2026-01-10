@@ -12,6 +12,7 @@ UI.__index = UI
 ---local ui = UI:new()
 ---```
 function UI:new()
+    -- Open a new one.
     local ui = setmetatable({}, UI)
 
     -- Create a listed, temporary buffer.
@@ -25,6 +26,29 @@ function UI:new()
     })
 
     return ui
+end
+
+---Drops a given UI. Cleaning up its open resources.
+function UI:drop()
+    -- Destroy the buffer.
+    vim.api.nvim_buf_delete(self.buf_handle, {})
+
+    -- Window deleted automagically.
+end
+
+---Register code to execute before the UI is dropped.
+---@param f function
+function UI:on_close(f)
+    -- Set up autocmd to give contents on window close.
+    --
+    -- Want to make sure it only impacts this window, so set up an augroup.
+    -- See `:help augroup`
+    local win_group = vim.api.nvim_create_augroup('compile_win_' .. self.win_handle, {})
+    vim.api.nvim_create_autocmd('QuitPre', {
+        once = true,
+        group = win_group,
+        callback = f,
+    })
 end
 
 ---Write line into this UI.
@@ -82,7 +106,10 @@ end
 ---```
 ---@param cmd string?
 local function compile(cmd)
-    assert(cmd ~= nil, '`M.compile` must be run with a non-nil cmd.')
+    -- Do nothing if no command.
+    if cmd == nil then
+        return
+    end
 
     -- Open the UI.
     local cmd_ui = UI:new()
@@ -118,6 +145,11 @@ local function compile(cmd)
 
     -- Set as read-only.
     vim.api.nvim_set_option_value('readonly', true, { buf = cmd_ui.buf_handle })
+
+    -- Kill contents on close.
+    cmd_ui:on_close(function()
+        cmd_ui:drop()
+    end)
 end
 
 ---Collects a new compile command via a user-editable scratch buffer.
@@ -128,24 +160,17 @@ local function get_cmd_and_compile()
 
     -- Runs when window hosting scratch buffer closes.
     -- Gathers the buffer contents, caches it, and runs `compile`.
-    local on_close = function(args)
+    cmd_ui:on_close(function()
         local cmd_lines = vim.api.nvim_buf_get_lines(cmd_ui.buf_handle, 0, -1, true)
         local cmd = table.concat(cmd_lines, ' ')
-        assert(cmd ~= '', 'Must enter a command in scratch buffer in `M.get_cmd_and_compile()`.')
-        M.compile(cmd)
+        if cmd == '' then
+            cmd_ui:drop()
+            return
+        end
+        compile(cmd)
         M.cached_cmd = cmd
-    end
-
-    -- Set up autocmd to give contents on window close.
-    --
-    -- Want to make sure it only impacts this window, so set up an augroup.
-    -- See `:help augroup`
-    local win_group = vim.api.nvim_create_augroup('compile_win_' .. cmd_ui.win_handle, {})
-    vim.api.nvim_create_autocmd('WinClosed', {
-        once = true,
-        group = win_group,
-        callback = on_close,
-    })
+        cmd_ui:drop()
+    end)
 end
 
 ---Create key command.
