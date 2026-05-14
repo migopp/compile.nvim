@@ -4,7 +4,15 @@ Convenient compilation buffer support.
 
 ## Usage
 
-I use [lazy](https://github.com/folke/lazy.nvim), and here is what mine looks like:
+With [`nvim.pack`](https://neovim.io/doc/user/pack/), use the following
+
+```lua
+vim.pack.add { 'https://github.com/migopp/compile.nvim' }
+
+require('compile').setup {}
+```
+
+If you use [lazy](https://github.com/folke/lazy.nvim), this should work:
 ```lua
 {
     'migopp/compile.nvim',
